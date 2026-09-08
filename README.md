@@ -165,24 +165,28 @@ create policy "users_own_data"
 
 ## 🚧 Roadmap
 
-### FASE 1 ✅ (Current)
+### FASE 1 ✅ (Completed)
 - [x] Setup Next.js 14 + dependencies
 - [x] Web Speech Listener (id-ID)
 - [x] Gemini voice parser
 - [x] Modal konfirmasi
 - [x] 4 Tab navigation + routing
 
-### FASE 2 (Next)
-- [ ] Advisory Engine (Traffic Light Alert)
-- [ ] Local Math Fallback (Gemini 429)
-- [ ] Product profitability table
-- [ ] Dashboard summary cards
+### FASE 2 ✅ (Completed)
+- [x] Advisory Engine (Traffic Light Alert)
+- [x] Local Math Fallback (Gemini 429)
+- [x] Alert Card (Quixotic Light Mode)
+- [x] Dashboard summary cards
+- [x] Header dengan History & Settings icons
+- [x] Integration ke /beranda page
 
-### FASE 3
+### FASE 3 (Next)
 - [ ] AI Virtual Studio (background removal)
 - [ ] Frame overlay + watermark
 - [ ] WhatsApp share integration
+- [ ] Product profitability table
 - [ ] Experiment tracking
+- [ ] Riwayat & Settings full implementation
 
 ## 📝 Conventions
 
