@@ -1,0 +1,214 @@
+# VokaSync — Koding Rules & Conventions
+# SSOT: PRD.md, TECHNICAL_SPEC.md, CHANGELOG_KONSISTENSI.md
+
+## 1. PRINSIP DESAIN PRODUK
+
+- **Zero Literacy Barrier**: Interaksi utama berbasis suara dan tap, minimal typing
+- **Zero Cost Barrier**: Seluruh stack menggunakan free tier atau client-side computation
+- **Actionable Insight over Raw Data**: Setiap output analitik harus berupa rekomendasi tindakan konkret
+- **Closed-Loop Learning**: Setiap rekomendasi dapat diuji melalui Eksperimen Before/After
+
+## 2. TECH STACK CONSTRAINTS (100% Rp0)
+
+### Wajib Digunakan:
+- **Framework**: Next.js 14+ (App Router, Server Actions)
+- **Styling**: Tailwind CSS 3.x
+- **UI Components**: Shadcn UI (CLI-based, kode disalin ke repo)
+- **Icons**: Lucide Icons (`lucide-react`)
+- **Database**: Supabase PostgreSQL (Free Tier, Row Level Security mandatory)
+- **Auth**: Supabase Auth (`auth.uid()` untuk RLS)
+- **Storage**: Supabase Storage (Free Tier)
+- **Voice Engine**: Web Speech API native (`lang: 'id-ID'`)
+- **AI Engine**: Google Gemini 1.5 Flash (`@google/genai`, Free Tier)
+- **Image Processing**: `@imgly/background-removal` (Client-side WASM)
+- **Canvas Engine**: HTML5 Canvas API (native)
+- **WhatsApp**: URI Scheme `wa.me` (NO WhatsApp Business API berbayar)
+- **Deployment**: Vercel Hobby Tier
+
+### Dilarang Keras:
+- ❌ API Speech-to-Text komersial berbayar (Google Cloud Speech, AWS Transcribe)
+- ❌ API Background Removal berbayar (remove.bg, Clipdrop)
+- ❌ WhatsApp Business API berbayar
+- ❌ Upgrade ke tier berbayar (Vercel, Supabase, dll.)
+
+## 3. KONVENSI PENAMAAN & STRUKTUR
+
+### File & Folder:
+- Komponen React: `kebab-case.tsx` → `voice-input-modal.tsx`
+- Fungsi/Komponen: `PascalCase` → `VoiceInputModal`
+- Server Actions: `domain.actions.ts` → `voice.actions.ts` (di `app/actions/`)
+- Custom Hooks: `use-*.ts` → `use-speech-recognition.ts`
+- Types: Sinkron 1:1 dengan skema database, gunakan camelCase di TypeScript
+
+### Routing (Next.js App Router):
+- `/` → redirect ke `/beranda`
+- `/beranda` → Tab 1 (Dashboard)
+- `/catat` → Tab 2 (Voice Input)
+- `/produk` → Tab 3 (Analisis Produk)
+- `/eksperimen` → Tab 4 (Tracking Eksperimen)
+- `@modal/(.)studio` → AI Virtual Studio (Intercepting Route, Modal Overlay)
+
+## 4. DATABASE & DATA CONTRACTS
+
+### Row Level Security (RLS):
+- SEMUA tabel WAJIB enable RLS dengan kebijakan `auth.uid() = user_id`
+- TIDAK ADA query yang bypass RLS kecuali cron internal Advisory Engine
+
+### Computed Columns:
+- Margin SELALU dihitung di database dengan `GENERATED ALWAYS AS`, TIDAK di aplikasi
+- `margin_absolute = selling_price - cost_price`
+- `margin_percentage = ((selling_price - cost_price) / selling_price) * 100`
+- `total_amount = quantity * unit_price`
+
+### TypeScript Contracts:
+- File `types/index.ts` adalah SSOT untuk semua interface
+- Sinkronisasi ketat dengan DDL SQL di `supabase/migrations/0001_init_schema.sql`
+- Gunakan camelCase untuk properties TypeScript, snake_case untuk kolom DB
+
+## 5. NAVIGATION ARCHITECTURE (NON-NEGOTIABLE)
+
+### 4 Tab Utama (Persistent Bottom Navigation):
+1. **Beranda** (`home` icon) — Dashboard + Alert Card
+2. **Catat** (`mic` icon) — Voice Input + Manual Form
+3. **Produk** (`package` icon) — Profitabilitas per SKU
+4. **Eksperimen** (`flask-conical` icon) — Tracking Before/After
+
+### AI Virtual Studio:
+- **BUKAN Tab kelima**, melainkan **Quick-Action Modal Overlay**
+- Dipicu dari tombol `[Buat Promosi WA]` pada AlertCard (hanya muncul jika Alert ≠ GREEN)
+- Implementasi: Parallel Route (`@modal`) + Intercepting Route (`(.)studio`)
+
+## 6. FUNCTIONAL REQUIREMENTS SPECIFICATIONS
+
+### FR-1: Voice Parser
+- Input: Web Speech API (`lang: 'id-ID'`)
+- Processing: Gemini 1.5 Flash untuk ekstraksi entitas (JSON structured output)
+- Output: `VoiceParseResponse` dengan confidence score
+- Fallback: Jika confidence < 0.6, highlight field untuk konfirmasi manual
+- Target Latency: < 2 detik (STT + Gemini extraction)
+
+### FR-2: Advisory Engine
+- Evaluasi margin & tren transaksi harian
+- Traffic Light Alert:
+  - **RED**: margin < 5% atau negatif (≥3 transaksi/24 jam)
+  - **YELLOW**: margin 5-15% atau tren turun ≥30%
+  - **GREEN**: margin > 15% dan tren stabil/naik
+- Gemini Rate Limit (429) → **Local Math Fallback** (wajib aktif)
+- Target Latency: < 3 detik
+
+### FR-3: AI Virtual Studio
+- Pipeline: Upload → BG Removal (WASM) → Frame Overlay → Price Watermark → WA Share
+- Frame Templates: 3 opsi (`frame-minimalis.png`, `frame-pasar.png`, `frame-kriya.png`)
+- Resolusi: 1080×1080px (safe zone 700×700px untuk produk)
+- BG Removal Target: < 5 detik (dengan Web Worker, tidak blokir main thread)
+- Fallback: Jika WASM gagal, tawarkan "Gunakan Foto Asli Tanpa Hapus Latar"
+
+## 7. PERFORMANCE BOUNDARIES
+
+| Proses | Max Latency | Strategi |
+|--------|-------------|----------|
+| Voice Parsing | < 2 detik | Streaming response, optimistic UI |
+| Background Removal | < 5 detik | WASM di Web Worker, progress bar granular |
+| Advisory Evaluation | < 3 detik | Precompute di DB, agregasi via SQL View |
+| Navigasi Tab | < 300 ms | Prefetching Next.js, skeleton loading |
+
+## 8. ACCESSIBILITY & UX
+
+### WCAG AA Compliance:
+- Kontras warna: minimum 4.5:1 untuk teks normal, 3:1 untuk teks besar
+- Touch target: minimum 44×44px untuk semua elemen interaktif
+- Responsive: 320px (mobile kecil) hingga tablet, prioritas 360-430px
+- Bahasa: 100% Bahasa Indonesia (UI, error messages, aria-label)
+
+### Feedback Multimodal:
+- Voice input: visual waveform indicator + haptic feedback (jika didukung)
+- Processing: skeleton loading, progress bar dengan persentase
+- Success/Error: toast notification dengan ikon status
+
+## 9. EDGE CASE HANDLING (MANDATORY FALLBACKS)
+
+1. **Gemini 429 Rate Limit** → Local Math Fallback (margin calculation via SQL/JS)
+2. **No Web Speech API** → Auto-switch ke ManualEntryForm
+3. **WASM RAM Failure** → Manual Bypass "Gunakan Foto Asli"
+4. **Offline Mode** → Save ke local storage/IndexedDB, sync saat online
+5. **Low Confidence (<0.6)** → Highlight field untuk konfirmasi manual
+6. **Empty Data Advisory** → Onboarding empty-state (bukan alert kosong)
+
+## 10. CODE ORGANIZATION
+
+### Server Actions:
+- Semua di folder `app/actions/`
+- Gunakan directive `'use server'` di top file
+- Naming: `voice.actions.ts`, `advisory.actions.ts`, `studio.actions.ts`, dsb.
+
+### Client Components:
+- Grouping by domain: `components/voice/`, `components/dashboard/`, `components/studio/`
+- Shadcn UI base components di `components/ui/` (auto-generated via CLI)
+- Custom hooks berdekatan dengan domain terkait
+
+### Lib Utilities:
+- `lib/supabase/` → client.ts (browser), server.ts (server, cookies)
+- `lib/gemini/` → client.ts, prompt files per-feature
+- `lib/advisory/` → local-math-fallback.ts
+- `lib/canvas/` → composite-engine.ts (pure functions)
+
+## 11. ENVIRONMENT VARIABLES SECURITY
+
+### Client-Side (NEXT_PUBLIC_*):
+- BOLEH: URLs, public keys (Supabase Anon Key), thresholds
+- Semua prefixed `NEXT_PUBLIC_` akan ter-bundle ke client JS
+
+### Server-Only (NO prefix):
+- WAJIB: GEMINI_API_KEY, SUPABASE_SERVICE_ROLE_KEY
+- TIDAK PERNAH diteruskan ke client component
+- Hanya diakses dari Server Actions/Route Handlers
+
+## 12. AI VIRTUAL STUDIO ASSETS
+
+### Frame Specifications:
+- Location: `public/frames/`
+- Format: PNG dengan alpha channel (transparent safe zone)
+- Resolution: 1080×1080px
+- Max size: ≤ 500KB per file
+- Safe Zone: 700×700px tengah untuk produk
+- Watermark Zone: sudut bawah non-dekoratif
+
+### 3 Templates Wajib:
+1. `frame-minimalis.png` — Latar putih/pastel, use case: kuliner kemasan
+2. `frame-pasar.png` — Nuansa kayu/pasar, use case: produk segar (Pak Budi)
+3. `frame-kriya.png` — Estetika tekstil/anyaman, use case: kerajinan (Bu Sari)
+
+## 13. DEMO SCENARIO PREPARATION
+
+### Skenario Utama (Pak Budi — Bawang Merah):
+1. Tab Catat: Voice input "jual bawang merah lima kilo harga tujuh puluh ribu" (< 2 detik)
+2. Tab Beranda: Tunjukkan Alert RED (margin kritis)
+3. Quick-Action: Buat promosi WA dengan Frame Pasar (< 5 detik BG removal)
+4. WhatsApp Share: Direct `wa.me` dengan gambar + teks otomatis
+5. Tab Eksperimen: Tunjukkan tracking "Promosi WA 3 Hari" (baseline recorded)
+
+## 14. TESTING & VALIDATION CHECKLIST
+
+- [ ] Voice Parser: test dengan berbagai variasi kalimat Indonesia
+- [ ] Advisory Engine: test dengan data margin RED/YELLOW/GREEN
+- [ ] Gemini Fallback: simulasi 429, pastikan Local Math aktif
+- [ ] WASM Fallback: simulasi low RAM, pastikan manual bypass tersedia
+- [ ] Offline Mode: test dengan DevTools network offline
+- [ ] Mobile Touch: test pada device 320px, 360px, 375px, 430px
+- [ ] WCAG Contrast: audit dengan axe DevTools atau Lighthouse
+- [ ] RLS Isolation: test dengan multiple users, pastikan data terisolasi
+
+## 15. VERSION & NAMING CONSENSUS
+
+### Product Name:
+- ✅ **VokaSync** (AKTIF sejak v1.2.0)
+- ❌ VokaUMKM (DEPRECATED, jangan digunakan lagi)
+
+### Document Priority (jika konflik):
+1. **CHANGELOG_KONSISTENSI.md** (keputusan branding & arsitektur)
+2. **PRD.md** (kebutuhan produk, UX, acceptance criteria)
+3. **TECHNICAL_SPEC.md** (detail implementasi teknis)
+
+---
+
+**CATATAN PENTING**: Rules ini adalah kontrak teknis. Setiap deviasi dari constraint Rp0 atau struktur navigasi 4 Tab + Modal HARUS mendapat approval eksplisit di CHANGELOG_KONSISTENSI.md sebelum implementasi.
