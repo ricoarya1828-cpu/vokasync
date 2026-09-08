@@ -1,7 +1,7 @@
 import { DollarSign, TrendingUp } from 'lucide-react';
 import { getLatestAlert } from '@/app/actions/advisory.actions';
 import { createClient } from '@/lib/supabase/server';
-import { AlertCard } from './alert-card';
+import { DashboardAlertCardWrapper } from './dashboard-client-wrapper';
 import { SummaryCard } from './summary-card';
 import Link from 'next/link';
 
@@ -84,19 +84,17 @@ export async function DashboardContent() {
         <h2 className="text-lg font-bold text-slate-900">Status Bisnis</h2>
         
         {latestAlert ? (
-          <AlertCard
+          <DashboardAlertCardWrapper
             status={latestAlert.alertStatus}
             message={latestAlert.alertMessage}
             recommendedAction={latestAlert.recommendedAction}
-            onQuickAction={() => {
-              // TODO: FASE 3 - Open AI Virtual Studio modal
-              console.log('Open AI Virtual Studio');
-            }}
             showQuickAction={true}
-            usedFallback={false} // Will be implemented with real evaluation
+            usedFallback={false}
+            productName="Produk Pilihan" // TODO: Get from actual product data
+            productPrice={latestAlert.productId ? undefined : 15000} // TODO: Get from actual product
           />
         ) : (
-          <AlertCard
+          <DashboardAlertCardWrapper
             status="GREEN"
             message="Sistem belum mengevaluasi produk Anda. Data evaluasi akan tersedia setelah Anda memiliki beberapa transaksi."
             showQuickAction={false}
@@ -175,7 +173,7 @@ function EmptyState() {
       <section className="space-y-3">
         <h2 className="text-lg font-bold text-slate-900">Status Bisnis</h2>
         
-        <AlertCard
+        <DashboardAlertCardWrapper
           status="GREEN"
           message="Selamat datang! Sistem akan mulai menganalisis margin produk setelah Anda mencatat beberapa transaksi."
           showQuickAction={false}
